@@ -1,0 +1,51 @@
+Sure, here's a PowerShell script that will identify all pipelines that are missing the SonarQube task in Azure DevOps:
+
+# Replace these values with your own
+$organization = "your-organization-name"
+$project = "your-project-name"
+$personalAccessToken = "your-personal-access-token"
+
+# Authenticate with Azure DevOps using a personal access token
+$base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(":$($personalAccessToken)"))
+
+# Construct the REST API URL to get a list of pipelines for the project
+$url = "https://dev.azure.com/$organization/$project/_apis/pipelines?api-version=6.0-preview.1"
+
+# Make the REST API request and convert the response to JSON
+$pipelinesResponse = Invoke-RestMethod -Uri $url -Headers @{Authorization=("Basic {0}" -f $base64AuthInfo)} -Method Get
+$pipelines = $pipelinesResponse.value
+
+# Loop through each pipeline and check if it has the SonarQube task
+foreach ($pipeline in $pipelines) {
+    $pipelineId = $pipeline.id
+    $pipelineName = $pipeline.name
+
+    # Construct the REST API URL to get the pipeline definition
+    $url = "https://dev.azure.com/$organization/$project/_apis/pipelines/$pipelineId?api-version=6.0-preview.1"
+
+    # Make the REST API request and convert the response to JSON
+    $pipelineDefinitionResponse = Invoke-RestMethod -Uri $url -Headers @{Authorization=("Basic {0}" -f $base64AuthInfo)} -Method Get
+    $pipelineDefinition = $pipelineDefinitionResponse | ConvertFrom-Json
+
+    # Check if the pipeline definition contains the SonarQube task
+    $hasSonarQubeTask = $false
+    foreach ($stage in $pipelineDefinition.stages) {
+        foreach ($job in $stage.jobs) {
+            foreach ($task in $job.tasks) {
+                if ($task.task?.id -eq "d15ca2b8-59c3-4139-9ca9-0f3f8b219abc") {
+                    $hasSonarQubeTask = $true
+                }
+            }
+        }
+    }
+
+    # Output the pipeline name if it doesn't have the SonarQube task
+    if (!$hasSonarQubeTask) {
+        Write-Host "Pipeline '$pipelineName' is missing the SonarQube task."
+    }
+}
+
+This script first authenticates with Azure DevOps using a personal access token. It then gets a list of pipelines for the specified project using the Azure DevOps REST API and loops through each pipeline. For each pipeline, the script gets its definition using the Azure DevOps REST API and checks if it contains the SonarQube task by looping through each stage, job, and task and checking its ID.
+
+If the pipeline definition doesn't contain the SonarQube task, the script outputs the pipeline name. Otherwise, the script moves on to the next pipeline.
+

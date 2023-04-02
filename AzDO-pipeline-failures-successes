@@ -1,0 +1,67 @@
+Sure, here's a PowerShell script that will display the number of pipeline failures and successes per project in Azure DevOps:
+
+# Replace these values with your own
+$organization = "your-organization-name"
+$personalAccessToken = "your-personal-access-token"
+
+# Authenticate with Azure DevOps using a personal access token
+$base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(":$($personalAccessToken)"))
+
+# Construct the REST API URL to get a list of projects in the organization
+$url = "https://dev.azure.com/$organization/_apis/projects?api-version=6.0"
+
+# Make the REST API request and convert the response to JSON
+$projectsResponse = Invoke-RestMethod -Uri $url -Headers @{Authorization=("Basic {0}" -f $base64AuthInfo)} -Method Get
+$projects = $projectsResponse.value
+
+# Loop through each project and get the number of pipeline failures and successes
+foreach ($project in $projects) {
+    $projectId = $project.id
+    $projectName = $project.name
+
+    # Construct the REST API URL to get a list of pipelines for the project
+    $url = "https://dev.azure.com/$organization/$projectName/_apis/pipelines?api-version=6.0-preview.1"
+
+    # Make the REST API request and convert the response to JSON
+    $pipelinesResponse = Invoke-RestMethod -Uri $url -Headers @{Authorization=("Basic {0}" -f $base64AuthInfo)} -Method Get
+    $pipelines = $pipelinesResponse.value
+
+    # Initialize counters for pipeline failures and successes
+    $pipelineFailures = 0
+    $pipelineSuccesses = 0
+
+    # Loop through each pipeline and get the number of runs and their results
+    foreach ($pipeline in $pipelines) {
+        $pipelineId = $pipeline.id
+        $pipelineName = $pipeline.name
+
+        # Construct the REST API URL to get a list of pipeline runs for the pipeline
+        $url = "https://dev.azure.com/$organization/$projectName/_apis/pipelines/$pipelineId/runs?api-version=6.0-preview.1"
+
+        # Make the REST API request and convert the response to JSON
+        $pipelineRunsResponse = Invoke-RestMethod -Uri $url -Headers @{Authorization=("Basic {0}" -f $base64AuthInfo)} -Method Get
+        $pipelineRuns = $pipelineRunsResponse.value
+
+        # Loop through each pipeline run and check its result
+        foreach ($pipelineRun in $pipelineRuns) {
+            $pipelineRunResult = $pipelineRun.result
+
+            if ($pipelineRunResult -eq "succeeded") {
+                $pipelineSuccesses++
+            } elseif ($pipelineRunResult -eq "failed") {
+                $pipelineFailures++
+            }
+        }
+    }
+
+    # Output the number of pipeline failures and successes for the project
+    Write-Host "Project '$projectName': $pipelineFailures pipeline failures, $pipelineSuccesses pipeline successes."
+}
+
+
+This script first authenticates with Azure DevOps using a personal access token. It then gets a list of projects in the organization using the Azure DevOps REST API and loops through each project. For each project, the script gets a list of pipelines using the Azure DevOps REST API and loops through each pipeline. For each pipeline, the script gets a list of pipeline runs using the Azure DevOps REST API and loops through each pipeline run, checking its result. The script increments counters for pipeline failures and successes based on the results of the pipeline runs.
+
+Finally, the script outputs the number of pipeline failures and successes for each project.
+
+Note that this
+

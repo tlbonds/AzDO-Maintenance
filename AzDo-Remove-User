@@ -1,0 +1,31 @@
+Sure thing! Here is a PowerShell script that removes users who haven't logged in to Azure DevOps in the last 30 days:
+
+```powershell
+# Set the required variables
+$PAT = "{Personal Access Token}"
+$Organization = "{Your Azure DevOps Organization}"
+$ProjectName = "{Your Project Name}"
+$DaysToInactive = 30
+
+# Get the list of group members
+$URL = "https://vssps.dev.azure.com/$Organization/_apis/Groups/{Your Team Group ID}/members?api-version=6.1-preview.1"
+$MembersJSON = Invoke-RestMethod -Uri $URL -Headers @{Authorization = "Basic $([System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes(":$PAT")))"} -Method GET -ContentType application/json
+$Members = $MembersJSON.value
+
+# Iterate through the list of group members
+foreach ($Member in $Members) {
+    $UserID = $Member.Identity.Id
+    $LastUserAccessURL = "https://vssps.dev.azure.com/$Organization/_apis/GraphProfile/Profile/$UserID/lastAccessedDate?api-version=6.0-preview.1"
+    $LastUserAccessJSON = Invoke-RestMethod -Uri $LastUserAccessURL -Headers @{Authorization = "Basic $([System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes(":$PAT")))"} -Method GET -ContentType application/json
+    $LastUserAccessTime = [System.DateTime]::Parse($LastUserAccessJSON.value, $null, 'RoundtripKind')
+    $DaysInactive = ([System.DateTime]::UtcNow - $LastUserAccessTime).Days
+    if ($DaysInactive -ge $DaysToInactive) {
+        # Remove the user
+        $RemoveURL = "https://vssps.dev.azure.com/$Organization/$ProjectName/_apis/graph/users/$UserID"
+        Invoke-RestMethod -Uri $RemoveURL -Headers @{Authorization = "Basic $([System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes(":$PAT")))"} -Method DELETE -ContentType application/json
+        Write-Host "The user with ID $UserID has been removed from Azure DevOps due to inactivity."
+    }
+}
+```
+
+Replace the variables with your own values (e.g. the Personal Access Token, the Azure DevOps organization, the team group ID, and the project name), save the script as a .ps1 file, and then run it in PowerShell. This script should remove any users who haven't logged in to Azure DevOps in the past 30 days.

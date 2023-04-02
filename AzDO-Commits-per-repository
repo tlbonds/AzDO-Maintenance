@@ -1,0 +1,49 @@
+# Replace these values with your own
+$organization = "your-organization-name"
+$pat = "your-personal-access-token"
+
+# Construct the REST API URL to get the list of projects
+$url = "https://dev.azure.com/$organization/_apis/projects?api-version=6.0"
+
+# Set the headers for the REST API request
+$headers = @{
+    Authorization = "Basic " + [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(":$pat"))
+}
+
+# Make the REST API request and convert the response to JSON
+$response = Invoke-RestMethod -Uri $url -Method Get -Headers $headers
+$projects = $response.value
+
+# Loop through the projects
+foreach ($project in $projects) {
+    # Construct the REST API URL to get the list of repositories for the project
+    $url = "https://dev.azure.com/$organization/$($project.name)/_apis/git/repositories?api-version=6.0"
+
+    # Make the REST API request and convert the response to JSON
+    $response = Invoke-RestMethod -Uri $url -Method Get -Headers $headers
+    $repositories = $response.value
+
+    # Loop through the repositories
+    foreach ($repository in $repositories) {
+        # Construct the REST API URL to get the list of commits for the repository
+        $url = "https://dev.azure.com/$organization/$($project.name)/_apis/git/repositories/$($repository.id)/commits?api-version=6.0"
+
+        # Make the REST API request and convert the response to JSON
+        $response = Invoke-RestMethod -Uri $url -Method Get -Headers $headers
+        $commits = $response.value
+
+        # Output the number of commits for the repository
+        Write-Host "Project $($project.name), Repository $($repository.name): $($commits.count) commits"
+    }
+}
+
+
+
+
+Sure, here's a PowerShell script that uses the Azure DevOps REST API to fetch the list of projects and repositories in an organization and then counts the number of commits per repository:
+
+You'll need to replace the $organization and $pat variables with your own values. You can generate a personal access token (PAT) in Azure DevOps by going to User Settings > Personal access tokens. The PAT should have at least the "Code (read)" scope to be able to access repository information.
+
+
+
+

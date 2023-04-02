@@ -1,0 +1,19 @@
+Subject: Important Notice - Azure DevOps will discontinue support for deployment group agents on RedHat 6
+
+Dear valued Azure DevOps user,
+
+We are writing to inform you about an important update regarding the support for deployment group agents on RedHat 6. After careful consideration and evaluation, Microsoft has decided to discontinue support for deployment group agents on RedHat 6, effective from June 1st, 2023.
+
+RedHat 6 has reached its end-of-life and no longer receives security updates or patches. This poses a significant security risk to your deployment pipelines and can compromise the integrity of your DevOps workflows. We strongly advise you to migrate your deployment group agents to a newer operating system as soon as possible.
+
+Here's what you need to know:
+
+Starting June 1st, 2023, Azure DevOps will no longer provide support for deployment group agents running on RedHat 6.
+You will be able to create new deployment group agents on RedHat 6 until June 1st, 2023. However, we strongly recommend that you create new agents on a supported operating system.
+You can continue to use existing deployment group agents on RedHat 6 until June 1st, 2023. However, after this date, we will no longer provide updates, bug fixes, or security patches for RedHat 6 agents.
+To ensure the security and stability of your DevOps environment, we encourage you to migrate your deployment group agents to a supported operating system. We recommend RedHat 7 or later, or a compatible distribution such as CentOS 7 or 8. These systems are still actively supported and receive regular security updates.
+
+If you have any questions or concerns about this change, please do not hesitate to reach out to our support team at devops@microsoft.com. We appreciate your understanding and cooperation in this matter.
+
+Best regards,
+The Azure DevOps Team

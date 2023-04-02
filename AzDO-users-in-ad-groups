@@ -1,0 +1,43 @@
+Sure, here's a PowerShell script that will output users that are a part of an Active Directory group that grants access to a project in Azure DevOps:
+
+# Replace these values with your own
+$organization = "your-organization-name"
+$project = "your-project-name"
+$group = "your-ad-group-name"
+$personalAccessToken = "your-personal-access-token"
+
+# Authenticate with Azure DevOps using a personal access token
+$base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(":$($personalAccessToken)"))
+
+# Construct the REST API URL to get the project's security namespace
+$url = "https://dev.azure.com/$organization/$project/_apis/securitynamespaces?api-version=5.1-preview.1"
+
+# Make the REST API request and convert the response to JSON
+$securityNamespaceResponse = Invoke-RestMethod -Uri $url -Headers @{Authorization=("Basic {0}" -f $base64AuthInfo)} -Method Get
+$securityNamespace = $securityNamespaceResponse.value | Where-Object { $_.name -eq "Project Collection" }
+
+# Construct the REST API URL to get the security namespace's access control list
+$url = "https://vssps.dev.azure.com/$organization/_apis/accesscontrollists/$($securityNamespace.id)?api-version=5.1-preview.1"
+
+# Make the REST API request and convert the response to JSON
+$accessControlListResponse = Invoke-RestMethod -Uri $url -Headers @{Authorization=("Basic {0}" -f $base64AuthInfo)} -Method Get
+$accessControlList = $accessControlListResponse.value
+
+# Find the security group that corresponds to the Active Directory group
+$securityGroup = $accessControlList | Where-Object { $_.displayName -eq $group }
+
+# Construct the REST API URL to get the security group's members
+$url = "https://vssps.dev.azure.com/$organization/_apis/identities/$($securityGroup.descriptor.identityId)/members?api-version=5.1-preview.1"
+
+# Make the REST API request and convert the response to JSON
+$membersResponse = Invoke-RestMethod -Uri $url -Headers @{Authorization=("Basic {0}" -f $base64AuthInfo)} -Method Get
+$members = $membersResponse.value
+
+# Output the members of the security group
+foreach ($member in $members) {
+    Write-Output $member.displayName
+}
+
+This script first authenticates with Azure DevOps using a personal access token. It then gets the security namespace for the project using the Azure DevOps REST API and finds the security group that corresponds to the Active Directory group.
+
+Once the security group is found, the script gets the members of the security group and outputs their display names.

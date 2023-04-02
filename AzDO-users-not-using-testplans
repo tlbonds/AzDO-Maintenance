@@ -1,0 +1,59 @@
+Sure, here's a PowerShell script that uses the Azure DevOps REST API to fetch the list of users who haven't used test plans, test suites, or test cases in the last 30 days:
+
+# Replace these values with your own
+$organization = "your-organization-name"
+$project = "your-project-name"
+$pat = "your-personal-access-token"
+
+# Set the date range for the last 30 days
+$startDate = (Get-Date).AddDays(-30).ToString("yyyy-MM-dd")
+$endDate = (Get-Date).ToString("yyyy-MM-dd")
+
+# Construct the REST API URL to get the list of test results
+$url = "https://dev.azure.com/$organization/$project/_apis/test/results?api-version=6.0&minLastUpdatedDate=$startDate&maxLastUpdatedDate=$endDate"
+
+# Set the headers for the REST API request
+$headers = @{
+    Authorization = "Basic " + [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(":$pat"))
+}
+
+# Make the REST API request and convert the response to JSON
+$response = Invoke-RestMethod -Uri $url -Method Get -Headers $headers
+$testResults = $response.value
+
+# Get the list of unique user IDs from the test results
+$userIds = $testResults | Select-Object -ExpandProperty runBy | Select-Object -Unique -ExpandProperty id
+
+# Construct the REST API URL to get the list of users
+$url = "https://vssps.dev.azure.com/$organization/_apis/graph/users?api-version=6.0-preview.1&ids=$(($userIds -join ","))"
+
+# Make the REST API request and convert the response to JSON
+$response = Invoke-RestMethod -Uri $url -Method Get -Headers $headers
+$users = $response.value
+
+# Loop through the users and check if they have used test plans, test suites, or test cases in the last 30 days
+foreach ($user in $users) {
+    # Construct the REST API URL to get the list of test plans for the user
+    $url = "https://dev.azure.com/$organization/$project/_apis/test/plans?api-version=6.0&owner=$($user.principalName)"
+
+    # Make the REST API request and convert the response to JSON
+    $response = Invoke-RestMethod -Uri $url -Method Get -Headers $headers
+    $testPlans = $response.value
+
+    # Construct the REST API URL to get the list of test suites and test cases for the user
+    $url = "https://dev.azure.com/$organization/$project/_apis/test/Plans/$($testPlans.id)/suites?api-version=6.0"
+
+    # Make the REST API request and convert the response to JSON
+    $response = Invoke-RestMethod -Uri $url -Method Get -Headers $headers
+    $testSuites = $response.value
+
+    # Check if the user has used test plans, test suites, or test cases in the last 30 days
+    if ($testPlans -or $testSuites) {
+        Write-Host "$($user.displayName) has used test plans, test suites, or test cases in the last 30 days"
+    } else {
+        Write-Host "$($user.displayName) has not used test plans, test suites, or test cases in the last 30 days"
+    }
+}
+
+
+You'll need to replace the $organization, $project, and $pat variables with your own values. You can generate a personal access token (PAT) in Azure DevOps by going to User Settings > Personal access tokens. The PAT should have at least the

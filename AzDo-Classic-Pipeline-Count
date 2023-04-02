@@ -1,0 +1,24 @@
+# Replace these values with your own
+$organization = "your-organization-name"
+$project = "your-project-name"
+$pat = "your-personal-access-token"
+
+# Construct the REST API URL to get the list of pipelines
+$url = "https://dev.azure.com/$organization/$project/_apis/pipelines?api-version=6.1-preview.1"
+
+# Set the headers for the REST API request
+$headers = @{
+    Authorization = "Basic " + [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(":$pat"))
+}
+
+# Make the REST API request and convert the response to JSON
+$response = Invoke-RestMethod -Uri $url -Method Get -Headers $headers
+$pipelines = $response.value | where {$_.pipelineType -eq "Build"}
+
+# Filter out the classic pipelines
+$classicPipelines = $pipelines | where {$_.repository.type -eq "TfsVersionControl"}
+
+# Output the count of classic pipelines
+Write-Host "Total number of classic pipelines: $($classicPipelines.count)"
+
+You'll need to replace the $organization, $project, and $pat variables with your own values. You can generate a personal access token (PAT) in Azure DevOps by going to User Settings > Personal access tokens. The PAT should have at least the "Build (read)" scope to be able to access pipeline information.

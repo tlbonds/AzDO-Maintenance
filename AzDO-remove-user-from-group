@@ -1,0 +1,38 @@
+here's a PowerShell script that removes a user from the "Project Collection Basic Users" group in Azure DevOps:
+
+
+# Replace these values with your own
+$organization = "your-organization-name"
+$projectCollectionId = "your-project-collection-id"
+$groupName = "Project Collection Basic Users"
+$username = "username-to-remove"
+
+# Authenticate with Azure DevOps using a personal access token
+$personalAccessToken = "your-personal-access-token"
+$base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(":$($personalAccessToken)"))
+
+# Construct the REST API URL to get the group membership of the user
+$url = "https://vssps.dev.azure.com/$organization/_apis/graph/memberships?$filter=memberDescriptor:Microsoft.IdentityModel.Claims.ClaimsIdentity;objectId=$username&api-version=6.0-preview.1"
+
+# Make the REST API request and convert the response to JSON
+$groupMembershipResponse = Invoke-RestMethod -Uri $url -Headers @{Authorization=("Basic {0}" -f $base64AuthInfo)} -Method Get
+$groupMembership = $groupMembershipResponse.value | Where-Object {$_.containerDescriptor.collectionId -eq $projectCollectionId -and $_.groupDescriptor.displayName -eq $groupName}
+
+if ($groupMembership -eq $null) {
+    Write-Host "The user is not a member of the '$groupName' group."
+} else {
+    # Construct the REST API URL to remove the user from the group
+    $url = "https://vssps.dev.azure.com/$organization/_apis/graph/memberships/$($groupMembership.membershipId)?api-version=6.0-preview.1"
+
+    # Make the REST API request to remove the user from the group
+    Invoke-RestMethod -Uri $url -Headers @{Authorization=("Basic {0}" -f $base64AuthInfo)} -Method Delete
+    Write-Host "The user has been removed from the '$groupName' group."
+}
+
+You'll need to replace the $organization, $projectCollectionId, $groupName, $username, and $personalAccessToken variables with your own values. The $personalAccessToken should have the "Read & write" scope for the "Identity" API.
+
+This script first gets the group membership of the specified user using the Azure DevOps REST API. If the user is not a member of the "Project Collection Basic Users" group, the script outputs a message saying so. Otherwise, the script constructs another REST API URL to remove the user from the group and sends a DELETE request to that URL. The script outputs a message confirming that the user has been removed from the group.
+
+Note that removing a user from the "Project Collection Basic Users" group may impact their ability to access resources in your Azure DevOps organization, so use this script with caution and ensure that the user's access to your organization is appropriately managed.
+
+

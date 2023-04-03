@@ -13,5 +13,22 @@ $headers = @{
 # Invoke REST API to get list of users with Basic + Test Plans access level
 $response = Invoke-RestMethod -Uri $url -Headers $headers
 
-# Output the list of users with Basic + Test Plans access level
-Write-Output $response.value
+# Create an array to store the list of users without recent test plan updates
+$usersWithoutRecentTestPlanUpdates = @()
+
+# Loop through the list of users to check if they have updated any test plans in any Azure DevOps project within the last 30 days
+foreach ($user in $response.value) {
+    $hasRecentTestPlanUpdates = $false
+    foreach ($extension in $user.extensions) {
+        if ($extension.testManagement.lastUpdatedDate -ge (Get-Date).AddDays(-30)) {
+            $hasRecentTestPlanUpdates = $true
+            break
+        }
+    }
+    if (!$hasRecentTestPlanUpdates) {
+        $usersWithoutRecentTestPlanUpdates += $user
+    }
+}
+
+# Output the list of users without recent test plan updates
+Write-Output $usersWithoutRecentTestPlanUpdates

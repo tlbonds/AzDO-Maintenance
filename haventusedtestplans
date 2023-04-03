@@ -1,47 +1,49 @@
 # Connect to Azure DevOps organization
-$orgUrl = "https://dev.azure.com/yourorganization"
-$personalAccessToken = "YOUR-PERSONAL-ACCESS-TOKEN"
-$connection = New-Object Microsoft.VisualStudio.Services.WebApi.VssConnection($orgUrl, [Microsoft.VisualStudio.Services.Common.VssBasicCredential]::new("", $personalAccessToken))
-$client = $connection.GetClient([Microsoft.TeamFoundation.TestManagement.WebApi.TestManagementHttpClient])
+$connectionToken = "YOUR-PAT-GOES-HERE"
+$orgName = "YOUR-ORG-NAME-GOES-HERE"
+$projectName = "YOUR-PROJECT-NAME-GOES-HERE"
+$baseUrl = "https://dev.azure.com/$orgName/$projectName/_apis"
+$base64AuthInfo = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes(":$($connectionToken)"))
 
-# Get all projects in the organization
-$projects = $client.GetProjects()
+# Calculate date range for the last 30 days
+$startDate = (Get-Date).AddDays(-30).ToString("yyyy-MM-dd")
+$endDate = (Get-Date).ToString("yyyy-MM-dd")
 
-# Loop through each project
-foreach ($project in $projects) {
-    # Get all test plans for the project
-    $testPlans = $client.GetTestPlansAsync($project.Id).Result
-    
-    # Loop through each test plan
-    foreach ($testPlan in $testPlans) {
-        # Get all test suites for the test plan
-        $testSuites = $client.GetTestSuitesForPlanAsync($project.Id, $testPlan.Id).Result
-        
-        # Loop through each test suite
-        foreach ($testSuite in $testSuites) {
-            # Get all test cases for the test suite
-            $testCases = $client.GetTestCasesAsync($project.Id, $testSuite.Plan.Id, $testSuite.Id).Result
-            
-            # Loop through each test case
-            foreach ($testCase in $testCases) {
-                # Get all test points for the test case
-                $testPoints = $client.GetPointsAsync($project.Id, $testSuite.Plan.Id, $testSuite.Id, $testCase.Id).Result
-                
-                # Loop through each test point
-                foreach ($testPoint in $testPoints) {
-                    # Check if the test point was last updated more than 30 days ago
-                    $lastUpdatedDate = [DateTime]::Parse($testPoint.LastResultDetails.DateCompleted)
-                    $daysSinceLastUpdate = (Get-Date) - $lastUpdatedDate
-                    if ($daysSinceLastUpdate.Days -gt 30) {
-                        # Get the user who last updated the test point
-                        $user = $client.GetTestPointPropertiesAsync($project.Id, $testSuite.Plan.Id, $testSuite.Id, $testCase.Id, $testPoint.Id).Result.AssignedTo.DisplayName
-                        
-                        # Output the user and the test point information
-                        Write-Output "User $($user) has not used test plans, test suites or test cases in the last 30 days for $($project.Name)"
-                    }
-                }
-            }
-        }
+# Get list of users with Basic + Test Plans access level
+$users = Invoke-RestMethod -Uri "$baseUrl/graph/users?api-version=6.0-preview.1" `
+                          -Method Get `
+                          -Headers @{Authorization = "Basic $base64AuthInfo"} `
+                          -ContentType application/json `
+                          -ErrorAction Stop `
+                          | Where-Object {$_.accessLevel.licensing.source -eq "account" -and $_.accessLevel.licensing.name -eq "Test Plans"}
+
+# Loop through users and check if they have created or edited any test plans, test suites or test cases in the last 30 days
+foreach ($user in $users) {
+    $userId = $user.principalName
+
+    # Get list of test plans for the user created or edited in the last 30 days
+    $testPlans = Invoke-RestMethod -Uri "$baseUrl/test/plans?owner=$userId&minLastUpdatedDate=$startDate&maxLastUpdatedDate=$endDate&api-version=6.0" `
+                                   -Method Get `
+                                   -Headers @{Authorization = "Basic $base64AuthInfo"} `
+                                   -ContentType application/json `
+                                   -ErrorAction Stop
+
+    # Get list of test suites for the user created or edited in the last 30 days
+    $testSuites = Invoke-RestMethod -Uri "$baseUrl/test/suites?owner=$userId&minLastUpdatedDate=$startDate&maxLastUpdatedDate=$endDate&api-version=6.0" `
+                                    -Method Get `
+                                    -Headers @{Authorization = "Basic $base64AuthInfo"} `
+                                    -ContentType application/json `
+                                    -ErrorAction Stop
+
+    # Get list of test cases for the user created or edited in the last 30 days
+    $testCases = Invoke-RestMethod -Uri "$baseUrl/testcases?owner=$userId&minLastUpdatedDate=$startDate&maxLastUpdatedDate=$endDate&api-version=6.0" `
+                                   -Method Get `
+                                   -Headers @{Authorization = "Basic $base64AuthInfo"} `
+                                   -ContentType application/json `
+                                   -ErrorAction Stop
+
+    # Check if the user has created or edited any test plans, test suites or test cases in the last 30 days
+    if ($testPlans.count -eq 0 -and $testSuites.count -eq 0 -and $testCases.count -eq 0) {
+        Write-Host "User $($user.displayName) ($userId) has Basic + Test plans access level but hasn't created or edited any test plans, test suites or test cases in the last 30 days."
     }
 }
-

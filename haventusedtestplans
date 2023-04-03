@@ -1,33 +1,47 @@
-# Define variables
-$pat = "<PAT>"
-$orgUrl = "<OrgUrl>"
+# Connect to Azure DevOps organization
+$orgUrl = "https://dev.azure.com/yourorganization"
+$personalAccessToken = "YOUR-PERSONAL-ACCESS-TOKEN"
+$connection = New-Object Microsoft.VisualStudio.Services.WebApi.VssConnection($orgUrl, [Microsoft.VisualStudio.Services.Common.VssBasicCredential]::new("", $personalAccessToken))
+$client = $connection.GetClient([Microsoft.TeamFoundation.TestManagement.WebApi.TestManagementHttpClient])
 
-# Set the Azure DevOps organization context
-$connectionToken = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes(":$($pat)"))
-$token = [System.Text.Encoding]::ASCII.GetBytes("$($connectionToken):")
-$headers = @{
-    Authorization = "Basic {0}" -f [System.Convert]::ToBase64String($token)
-    "Content-Type" = "application/json"
-}
-$azureDevOpsUri = "$orgUrl/_apis/projects?api-version=6.0"
+# Get all projects in the organization
+$projects = $client.GetProjects()
 
-# Get all the projects in the organization
-$projects = Invoke-RestMethod -Uri $azureDevOpsUri -Headers $headers -Method Get | Select-Object -ExpandProperty Value
-
-# Loop through each project and get the users who have not used test plans, test suites or test cases in the last 30 days
+# Loop through each project
 foreach ($project in $projects) {
-    # Get the project ID
-    $projectId = $project.id
-
-    # Set the Azure DevOps project context
-    $azureDevOpsUri = "$orgUrl/$($projectId)/_apis/testplan/TestResults/ByBuild?api-version=6.0-preview.2"
-
-    # Get the users who have not used test plans, test suites or test cases in the last 30 days
-    $users = Invoke-RestMethod -Uri $azureDevOpsUri -Headers $headers -Method Get | Select-Object -ExpandProperty Users |
-        Where-Object { $_.AccessLevel -eq "basic+testplans" -and $_.LastActivityDate -lt (Get-Date).AddDays(-30) } |
-        Select-Object DisplayName, Email
-
-    # Output the results
-    Write-Host "Users who have not used test plans, test suites or test cases in the last 30 days in the $($project.name) project:"
-    $users | Format-Table -AutoSize
+    # Get all test plans for the project
+    $testPlans = $client.GetTestPlansAsync($project.Id).Result
+    
+    # Loop through each test plan
+    foreach ($testPlan in $testPlans) {
+        # Get all test suites for the test plan
+        $testSuites = $client.GetTestSuitesForPlanAsync($project.Id, $testPlan.Id).Result
+        
+        # Loop through each test suite
+        foreach ($testSuite in $testSuites) {
+            # Get all test cases for the test suite
+            $testCases = $client.GetTestCasesAsync($project.Id, $testSuite.Plan.Id, $testSuite.Id).Result
+            
+            # Loop through each test case
+            foreach ($testCase in $testCases) {
+                # Get all test points for the test case
+                $testPoints = $client.GetPointsAsync($project.Id, $testSuite.Plan.Id, $testSuite.Id, $testCase.Id).Result
+                
+                # Loop through each test point
+                foreach ($testPoint in $testPoints) {
+                    # Check if the test point was last updated more than 30 days ago
+                    $lastUpdatedDate = [DateTime]::Parse($testPoint.LastResultDetails.DateCompleted)
+                    $daysSinceLastUpdate = (Get-Date) - $lastUpdatedDate
+                    if ($daysSinceLastUpdate.Days -gt 30) {
+                        # Get the user who last updated the test point
+                        $user = $client.GetTestPointPropertiesAsync($project.Id, $testSuite.Plan.Id, $testSuite.Id, $testCase.Id, $testPoint.Id).Result.AssignedTo.DisplayName
+                        
+                        # Output the user and the test point information
+                        Write-Output "User $($user) has not used test plans, test suites or test cases in the last 30 days for $($project.Name)"
+                    }
+                }
+            }
+        }
+    }
 }
+

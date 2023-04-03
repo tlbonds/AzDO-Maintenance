@@ -1,49 +1,20 @@
-# Connect to Azure DevOps organization
-$connectionToken = "YOUR-PAT-GOES-HERE"
-$orgName = "YOUR-ORG-NAME-GOES-HERE"
-$projectName = "YOUR-PROJECT-NAME-GOES-HERE"
-$baseUrl = "https://dev.azure.com/$orgName/$projectName/_apis"
-$base64AuthInfo = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes(":$($connectionToken)"))
+# Set up variables for Azure DevOps organization and personal access token
+$orgName = "YourAzureDevOpsOrganizationName"
+$pat = "YourPersonalAccessToken"
 
-# Calculate date range for the last 30 days
-$startDate = (Get-Date).AddDays(-30).ToString("yyyy-MM-dd")
-$endDate = (Get-Date).ToString("yyyy-MM-dd")
+# Set up API URL for getting list of users with Basic + Test Plans license
+$url = "https://vssps.dev.azure.com/$orgName/_apis/userentitlements?api-version=6.0-preview.2&$filter=(accessLevel/license/accessLevelBits eq 6)&$expand=extensions"
 
-# Get list of users with Basic + Test Plans access level
-$users = Invoke-RestMethod -Uri "$baseUrl/graph/users?api-version=6.0-preview.1" `
-                          -Method Get `
-                          -Headers @{Authorization = "Basic $base64AuthInfo"} `
-                          -ContentType application/json `
-                          -ErrorAction Stop `
-                          | Where-Object {$_.accessLevel.licensing.source -eq "account" -and $_.accessLevel.licensing.name -eq "Test Plans"}
-
-# Loop through users and check if they have created or edited any test plans, test suites or test cases in the last 30 days
-foreach ($user in $users) {
-    $userId = $user.principalName
-
-    # Get list of test plans for the user created or edited in the last 30 days
-    $testPlans = Invoke-RestMethod -Uri "$baseUrl/test/plans?owner=$userId&minLastUpdatedDate=$startDate&maxLastUpdatedDate=$endDate&api-version=6.0" `
-                                   -Method Get `
-                                   -Headers @{Authorization = "Basic $base64AuthInfo"} `
-                                   -ContentType application/json `
-                                   -ErrorAction Stop
-
-    # Get list of test suites for the user created or edited in the last 30 days
-    $testSuites = Invoke-RestMethod -Uri "$baseUrl/test/suites?owner=$userId&minLastUpdatedDate=$startDate&maxLastUpdatedDate=$endDate&api-version=6.0" `
-                                    -Method Get `
-                                    -Headers @{Authorization = "Basic $base64AuthInfo"} `
-                                    -ContentType application/json `
-                                    -ErrorAction Stop
-
-    # Get list of test cases for the user created or edited in the last 30 days
-    $testCases = Invoke-RestMethod -Uri "$baseUrl/testcases?owner=$userId&minLastUpdatedDate=$startDate&maxLastUpdatedDate=$endDate&api-version=6.0" `
-                                   -Method Get `
-                                   -Headers @{Authorization = "Basic $base64AuthInfo"} `
-                                   -ContentType application/json `
-                                   -ErrorAction Stop
-
-    # Check if the user has created or edited any test plans, test suites or test cases in the last 30 days
-    if ($testPlans.count -eq 0 -and $testSuites.count -eq 0 -and $testCases.count -eq 0) {
-        Write-Host "User $($user.displayName) ($userId) has Basic + Test plans access level but hasn't created or edited any test plans, test suites or test cases in the last 30 days."
-    }
+# Set up header for API request with personal access token
+$headers = @{
+    Authorization = "Basic $( [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(":$($pat)")) )"
 }
+
+# Invoke REST API to get list of users with Basic + Test Plans license
+$response = Invoke-RestMethod -Uri $url -Headers $headers
+
+# Filter the list of users to only those who haven't created test plans in the last 30 days
+$usersWithoutRecentTestPlans = $response.value | Where-Object { $_.extensions.testManagement.lastUsedDate -lt (Get-Date).AddDays(-30) }
+
+# Output the filtered list of users
+Write-Output $usersWithoutRecentTestPlans

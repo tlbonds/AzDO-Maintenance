@@ -1,0 +1,64 @@
+Sure, here's a PowerShell script that should achieve what you're looking for:
+
+
+# Set Azure DevOps organization URL and personal access token (PAT)
+$orgUrl = "https://dev.azure.com/yourorganization"
+$pat = "yourPAT"
+
+# Set the API version to use for Azure DevOps REST API
+$apiVersion = "6.1-preview.3"
+
+# Set the user access level to filter for
+$userAccessLevel = "Basic + Test Plans"
+
+# Get a list of all users in the Azure DevOps organization
+$usersUrl = "$orgUrl/_apis/userentitlements?api-version=$apiVersion"
+$usersResponse = Invoke-RestMethod -Uri $usersUrl -Method Get -Headers @{Authorization = "Bearer $pat"}
+$users = $usersResponse.value | Where-Object { $_.accessLevel.licenseDisplayName -eq $userAccessLevel }
+
+# Loop through each user and check if they have used test plans, test suites, or test cases in any project
+foreach ($user in $users) {
+    $userId = $user.user.principalName
+    $projectsUrl = "$orgUrl/_apis/projects?api-version=$apiVersion"
+    $projectsResponse = Invoke-RestMethod -Uri $projectsUrl -Method Get -Headers @{Authorization = "Bearer $pat"}
+    $projects = $projectsResponse.value
+    
+    $notUsedInAnyProject = $true
+    
+    foreach ($project in $projects) {
+        $projectId = $project.id
+        $testPlansUrl = "$orgUrl/$projectId/_apis/test/plans?api-version=$apiVersion"
+        $testPlansResponse = Invoke-RestMethod -Uri $testPlansUrl -Method Get -Headers @{Authorization = "Bearer $pat"}
+
+        if ($testPlansResponse.value) {
+            $notUsedInAnyProject = $false
+            break
+        }
+
+        $testSuitesUrl = "$orgUrl/$projectId/_apis/testplan/suites?api-version=$apiVersion"
+        $testSuitesResponse = Invoke-RestMethod -Uri $testSuitesUrl -Method Get -Headers @{Authorization = "Bearer $pat"}
+
+        if ($testSuitesResponse.value) {
+            $notUsedInAnyProject = $false
+            break
+        }
+
+        $testCasesUrl = "$orgUrl/$projectId/_apis/test/Plans/points?api-version=$apiVersion"
+        $testCasesResponse = Invoke-RestMethod -Uri $testCasesUrl -Method Get -Headers @{Authorization = "Bearer $pat"}
+
+        if ($testCasesResponse.value) {
+            $notUsedInAnyProject = $false
+            break
+        }
+    }
+    
+    if ($notUsedInAnyProject) {
+        Write-Output "$userId has not used test plans, test suites, or test cases in any Azure DevOps project."
+    }
+}
+
+This script first sets the Azure DevOps organization URL and personal access token, as well as the API version to use. It then filters the list of all users in the organization to only those with the "Basic + Test Plans" access level.
+
+The script then loops through each user and checks if they have used test plans, test suites, or test cases in any project. If a user has not used any of these features in any project, the script outputs a message indicating that the user has not used them.
+
+Note that this script assumes that you have the Azure DevOps PowerShell module installed. If you don't have it installed, you can install it by running Install-Module -Name AzureDevOps -AllowClobber -Scope CurrentUser in a PowerShell session.

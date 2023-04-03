@@ -2,7 +2,7 @@
 $orgName = "YourAzureDevOpsOrganizationName"
 $pat = "YourPersonalAccessToken"
 
-# Set up API URL for getting list of users with Basic + Test Plans license
+# Set up API URL for getting list of users with Basic + Test Plans access level
 $url = "https://vssps.dev.azure.com/$orgName/_apis/userentitlements?api-version=6.0-preview.2&$filter=(accessLevel/license/accessLevelBits eq 6)&$expand=extensions"
 
 # Set up header for API request with personal access token
@@ -10,7 +10,7 @@ $headers = @{
     Authorization = "Basic $( [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(":$($pat)")) )"
 }
 
-# Invoke REST API to get list of users with Basic + Test Plans license
+# Invoke REST API to get list of users with Basic + Test Plans access level
 $response = Invoke-RestMethod -Uri $url -Headers $headers
 
 # Filter the list of users to only those who haven't created test plans in the last 30 days

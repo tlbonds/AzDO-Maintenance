@@ -1,19 +1,19 @@
-Subject: Important Notice - Azure DevOps will discontinue support for deployment group agents on RedHat 6
+Subject: End of Support for Deployment Group Agents on RHEL6
 
-Dear valued Azure DevOps user,
+Dear Azure DevOps End Users,
 
-We are writing to inform you about an important update regarding the support for deployment group agents on RedHat 6. After careful consideration and evaluation, Microsoft has decided to discontinue support for deployment group agents on RedHat 6, effective from June 1st, 2023.
+We wanted to inform you that Microsoft Azure DevOps will no longer support Deployment Group Agents on RHEL6, effective immediately.
 
-RedHat 6 has reached its end-of-life and no longer receives security updates or patches. This poses a significant security risk to your deployment pipelines and can compromise the integrity of your DevOps workflows. We strongly advise you to migrate your deployment group agents to a newer operating system as soon as possible.
+This decision was made because RHEL6 has reached its end of life, and continuing to support Deployment Group Agents on this operating system would expose our users to potential security vulnerabilities and other risks.
 
-Here's what you need to know:
+As a result, we highly recommend that you migrate your Deployment Group Agents to a supported operating system as soon as possible to ensure that you continue to receive all the benefits and security enhancements of Azure DevOps.
 
-Starting June 1st, 2023, Azure DevOps will no longer provide support for deployment group agents running on RedHat 6.
-You will be able to create new deployment group agents on RedHat 6 until June 1st, 2023. However, we strongly recommend that you create new agents on a supported operating system.
-You can continue to use existing deployment group agents on RedHat 6 until June 1st, 2023. However, after this date, we will no longer provide updates, bug fixes, or security patches for RedHat 6 agents.
-To ensure the security and stability of your DevOps environment, we encourage you to migrate your deployment group agents to a supported operating system. We recommend RedHat 7 or later, or a compatible distribution such as CentOS 7 or 8. These systems are still actively supported and receive regular security updates.
+Please note that we will continue to support Deployment Group Agents on RHEL7 and newer versions, as well as other supported operating systems.
 
-If you have any questions or concerns about this change, please do not hesitate to reach out to our support team at devops@microsoft.com. We appreciate your understanding and cooperation in this matter.
+If you have any questions or concerns about this change, please do not hesitate to reach out to our support team for assistance.
+
+Thank you for your understanding and cooperation in this matter.
 
 Best regards,
+
 The Azure DevOps Team

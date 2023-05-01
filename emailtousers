@@ -17,3 +17,23 @@ Thank you for your understanding and cooperation in this matter.
 Best regards,
 
 The Azure DevOps Team
+
+$base_url = "https://api.bitbucket.org"
+$username = "YOUR_BITBUCKET_USERNAME"
+$password = "YOUR_BITBUCKET_APP_PASSWORD"
+
+# Retrieve repositories
+$uri = "$base_url/2.0/repositories/$username"
+$response = Invoke-RestMethod -Uri $uri -Method Get -Headers @{Authorization=("Basic {0}" -f [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes("$($username):$($password)")))}
+$repositories = $response.values
+
+# Iterate through repositories and retrieve their sizes
+foreach ($repository in $repositories) {
+    $uri = "$base_url/2.0/repositories/$($repository.owner.username)/$($repository.slug)/size"
+    $response = Invoke-RestMethod -Uri $uri -Method Get -Headers @{Authorization=("Basic {0}" -f [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes("$($username):$($password)")))}
+    $size = $response.size
+
+    Write-Output "Repository $($repository.name) size: $($size) bytes"
+}
+
+
